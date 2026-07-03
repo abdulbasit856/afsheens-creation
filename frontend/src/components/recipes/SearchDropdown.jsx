@@ -11,6 +11,17 @@ const SearchDropdown = ({ onSearch, categories }) => {
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const dropdownRef = useRef(null);
   const inputRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Fetch suggestions based on search term
   useEffect(() => {
@@ -23,7 +34,8 @@ const SearchDropdown = ({ onSearch, categories }) => {
 
       setLoading(true);
       try {
-        const response = await fetch(`http://localhost:5000/api/recipes?search=${encodeURIComponent(searchTerm)}&limit=5`);
+        const API_URL = process.env.REACT_APP_API_URL || 'https://afsheens-creation-production.up.railway.app/api';
+        const response = await fetch(`${API_URL}/recipes?search=${encodeURIComponent(searchTerm)}&limit=5`);
         const data = await response.json();
         if (data.success) {
           setSuggestions(data.recipes);
@@ -45,10 +57,15 @@ const SearchDropdown = ({ onSearch, categories }) => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setShowDropdown(false);
+        setSelectedIndex(-1);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   // Keyboard navigation
@@ -84,6 +101,10 @@ const SearchDropdown = ({ onSearch, categories }) => {
       onSearch(searchTerm, '');
       setShowDropdown(false);
       setSelectedIndex(-1);
+      // On mobile, blur the input to hide keyboard
+      if (inputRef.current) {
+        inputRef.current.blur();
+      }
     }
   };
 
@@ -93,11 +114,21 @@ const SearchDropdown = ({ onSearch, categories }) => {
     setShowDropdown(false);
     setSelectedIndex(-1);
     onSearch('', '');
-    inputRef.current?.focus();
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
   };
 
   const handleSuggestionClick = (recipe) => {
     window.location.href = `/recipe/${recipe._id}`;
+  };
+
+  // Touch handler for mobile
+  const handleTouchStart = (e) => {
+    // Keep dropdown open on touch
+    if (searchTerm.trim() && suggestions.length > 0) {
+      setShowDropdown(true);
+    }
   };
 
   return (
@@ -116,13 +147,16 @@ const SearchDropdown = ({ onSearch, categories }) => {
                 setShowDropdown(true);
               }
             }}
+            onTouchStart={handleTouchStart}
             className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 text-base"
+            autoComplete="off"
           />
           {searchTerm && (
             <button
               type="button"
               onClick={handleClear}
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Clear search"
             >
               <FaTimes />
             </button>
@@ -131,9 +165,9 @@ const SearchDropdown = ({ onSearch, categories }) => {
         <button type="submit" className="hidden">Search</button>
       </form>
 
-      {/* Dropdown Suggestions */}
+      {/* Dropdown Suggestions - Mobile friendly */}
       {showDropdown && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-auto">
+        <div className={`absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-auto ${isMobile ? 'w-full' : ''}`}>
           {loading ? (
             <div className="flex justify-center items-center p-4">
               <LoadingSpinner size="sm" />
@@ -148,7 +182,8 @@ const SearchDropdown = ({ onSearch, categories }) => {
                 <div
                   key={recipe._id}
                   onClick={() => handleSuggestionClick(recipe)}
-                  className={`flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
+                  onTouchEnd={() => handleSuggestionClick(recipe)}
+                  className={`flex items-center gap-3 p-3 hover:bg-gray-50 active:bg-gray-100 cursor-pointer transition-colors ${
                     index === selectedIndex ? 'bg-gray-100' : ''
                   } ${index !== suggestions.length - 1 ? 'border-b border-gray-100' : ''}`}
                 >
@@ -178,7 +213,7 @@ const SearchDropdown = ({ onSearch, categories }) => {
               <div className="p-2 text-center border-t border-gray-100">
                 <button
                   onClick={handleSearch}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                  className="text-sm text-primary-600 hover:text-primary-700 font-medium w-full py-2"
                 >
                   See all results for "{searchTerm}"
                 </button>
