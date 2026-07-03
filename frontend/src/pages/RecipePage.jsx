@@ -4,7 +4,17 @@ import { Helmet } from 'react-helmet-async';
 import { useRecipes } from '../context/RecipeContext';
 import CommentSection from '../components/comments/CommentSection';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { FaClock, FaUser, FaUtensils, FaStar, FaStarHalfAlt, FaRegStar, FaArrowLeft, FaPlay, FaYoutube } from 'react-icons/fa';
+import { 
+  FaClock, 
+  FaUser, 
+  FaUtensils, 
+  FaStar, 
+  FaStarHalfAlt, 
+  FaRegStar, 
+  FaArrowLeft, 
+  FaPlay, 
+  FaYoutube 
+} from 'react-icons/fa';
 import { IoTimeOutline } from 'react-icons/io5';
 import { MdPeople } from 'react-icons/md';
 
@@ -16,15 +26,22 @@ const RecipePage = () => {
   const [averageRating, setAverageRating] = useState(0);
   const [ratingCount, setRatingCount] = useState(0);
   const [videoError, setVideoError] = useState(false);
+  const [commentError, setCommentError] = useState(false);
 
   useEffect(() => {
     const loadRecipe = async () => {
       setLoading(true);
       const data = await getRecipe(id);
-      if (data) setRecipe(data);
+      if (data) {
+        setRecipe(data);
+      } else {
+        setCommentError(true);
+      }
       setLoading(false);
     };
     loadRecipe();
+    // Scroll to top when recipe loads
+    window.scrollTo(0, 0);
   }, [id, getRecipe]);
 
   // Fetch rating for this recipe
@@ -32,7 +49,7 @@ const RecipePage = () => {
     const fetchRating = async () => {
       if (!id) return;
       try {
-        const response = await fetch(`http://localhost:5000/api/comments/recipe/${id}?limit=1`);
+        const response = await fetch(`https://afsheens-creation-production.up.railway.app/api/comments/recipe/${id}?limit=1`);
         const data = await response.json();
         if (data.success && data.rating) {
           setAverageRating(data.rating.average);
@@ -48,8 +65,8 @@ const RecipePage = () => {
   // Render stars function
   const renderStars = (rating) => {
     const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
+    const fullStars = Math.floor(rating || 0);
+    const hasHalfStar = (rating || 0) % 1 >= 0.5;
 
     for (let i = 1; i <= 5; i++) {
       if (i <= fullStars) {
@@ -64,7 +81,18 @@ const RecipePage = () => {
   };
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingSpinner size="lg" /></div>;
-  if (!recipe) return <div className="min-h-[60vh] flex flex-col items-center justify-center"><h2 className="text-2xl font-playfair text-gray-800">Recipe Not Found</h2><Link to="/" className="btn-primary mt-4"><FaArrowLeft className="inline mr-2" /> Back to Home</Link></div>;
+  
+  if (!recipe || commentError) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center">
+        <h2 className="text-2xl font-playfair text-gray-800">Recipe Not Found</h2>
+        <p className="text-gray-500 mt-2">The recipe you're looking for doesn't exist or couldn't be loaded.</p>
+        <Link to="/" className="btn-primary mt-4">
+          <FaArrowLeft className="inline mr-2" /> Back to Home
+        </Link>
+      </div>
+    );
+  }
 
   const videoId = recipe.videoId;
 
@@ -77,11 +105,13 @@ const RecipePage = () => {
       </Helmet>
       <div className="bg-gray-50 min-h-screen pt-20 pb-8 overflow-x-hidden">
         <div className="container-custom">
+          {/* Back Button */}
           <Link to="/" className="inline-flex items-center text-gray-600 hover:text-primary-600 mt-4 mb-6 transition-colors text-sm md:text-base">
             <FaArrowLeft className="mr-2" /> Back to Recipes
           </Link>
           
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            {/* Hero Image */}
             <div className="relative h-[250px] md:h-[400px] lg:h-[500px]">
               <img 
                 src={recipe.imageUrl} 
@@ -104,6 +134,7 @@ const RecipePage = () => {
               </div>
             </div>
 
+            {/* Meta Info with Rating */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 p-4 md:p-6 bg-gray-50 border-b border-gray-100">
               <div className="flex items-center space-x-2">
                 <FaClock className="text-primary-500 text-base md:text-xl" />
@@ -150,11 +181,11 @@ const RecipePage = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 p-4 md:p-8">
               <div className="lg:col-span-2 space-y-6 md:space-y-8">
-                {/* YouTube Video - Mobile Optimized */}
+                {/* YouTube Video */}
                 {videoId ? (
                   <div className="bg-black rounded-xl overflow-hidden aspect-video relative">
                     <iframe
-                      src={`https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1&playsinline=1&controls=1&showinfo=0&iv_load_policy=3&origin=http://localhost:3000`}
+                      src={`https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1&playsinline=1&controls=1&showinfo=0&iv_load_policy=3`}
                       title={`${recipe.title} video`}
                       className="w-full h-full"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -171,6 +202,7 @@ const RecipePage = () => {
                   </div>
                 )}
 
+                {/* Ingredients */}
                 <div>
                   <h2 className="text-xl md:text-2xl font-playfair font-bold text-gray-800 mb-3 md:mb-4 flex items-center">
                     <FaUtensils className="text-primary-500 mr-2" /> Ingredients
@@ -190,6 +222,7 @@ const RecipePage = () => {
                   </ul>
                 </div>
 
+                {/* Instructions */}
                 <div>
                   <h2 className="text-xl md:text-2xl font-playfair font-bold text-gray-800 mb-3 md:mb-4">Instructions</h2>
                   <ol className="space-y-3 md:space-y-4">
@@ -205,6 +238,7 @@ const RecipePage = () => {
                 </div>
               </div>
 
+              {/* Sidebar */}
               <div className="space-y-4 md:space-y-6">
                 <div className="bg-gray-50 rounded-xl p-4 md:p-6">
                   <h3 className="font-semibold text-gray-700 mb-2 md:mb-3 flex items-center text-sm md:text-base">
