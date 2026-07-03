@@ -27,7 +27,7 @@ app.use(helmet({
 // CORS configuration
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://afsheen-creations.vercel.app']
+    ? ['https://afsheens-creation.vercel.app']
     : ['http://localhost:3000', 'http://localhost:5173'],
   credentials: true,
 }));
